@@ -6,18 +6,27 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	core_logger "github.com/glebateee/taskapp/internal/core/logger"
 	core_pgx_pool "github.com/glebateee/taskapp/internal/core/repository/postgres/pool/pgx"
 	core_http_middleware "github.com/glebateee/taskapp/internal/core/transport/http/middleware"
 	core_http_server "github.com/glebateee/taskapp/internal/core/transport/http/server"
+	tasks_repository_postgres "github.com/glebateee/taskapp/internal/features/tasks/repository/postgres"
+	tasks_service "github.com/glebateee/taskapp/internal/features/tasks/service"
+	tasks_transport_http "github.com/glebateee/taskapp/internal/features/tasks/transport/http"
 	users_repository_postgres "github.com/glebateee/taskapp/internal/features/users/repository/postgres"
 	users_service "github.com/glebateee/taskapp/internal/features/users/service"
 	users_transport_http "github.com/glebateee/taskapp/internal/features/users/transport/http"
 	"go.uber.org/zap"
 )
 
+var (
+	timeZone = time.UTC
+)
+
 func main() {
+	time.Local = timeZone
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
 		syscall.SIGINT, syscall.SIGTERM,
@@ -29,6 +38,8 @@ func main() {
 		os.Exit(1)
 	}
 	defer logger.Close()
+	logger.Debug("application time zone", zap.Any("zone", timeZone))
+
 	logger.Debug("initializing postgres connection pool")
 
 	pool, err := core_pgx_pool.NewPool(ctx, core_pgx_pool.NewConfigMust())
@@ -42,6 +53,12 @@ func main() {
 	usersRepository := users_repository_postgres.NewUsersRepository(pool)
 	usersService := users_service.NewUsersService(usersRepository)
 	usersTransportHTTP := users_transport_http.NewUsersHTTPHandler(usersService)
+
+	logger.Debug("initializing feature", zap.String("feature", "tasks"))
+
+	tasksRepository := tasks_repository_postgres.NewTasksRepository(pool)
+	tasksService := tasks_service.NewTasksService(tasksRepository)
+	tasksTransportHTTP := tasks_transport_http.NewTasksHTTPHandler(tasksService)
 
 	logger.Debug("initializing HTTP server")
 
@@ -58,6 +75,8 @@ func main() {
 		core_http_middleware.Dummy("apirouter"),
 	)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(tasksTransportHTTP.Routes()...)
+
 	httpServer.RegisterApiRouters(apiVersionRouter)
 
 	if err := httpServer.Run(ctx); err != nil {
