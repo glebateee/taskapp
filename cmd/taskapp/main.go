@@ -13,6 +13,9 @@ import (
 	core_pgx_pool "github.com/glebateee/taskapp/internal/core/repository/postgres/pool/pgx"
 	core_http_middleware "github.com/glebateee/taskapp/internal/core/transport/http/middleware"
 	core_http_server "github.com/glebateee/taskapp/internal/core/transport/http/server"
+	statistics_repository_postgres "github.com/glebateee/taskapp/internal/features/statistics/repository/postgres"
+	statistics_service "github.com/glebateee/taskapp/internal/features/statistics/service"
+	statistics_transport_http "github.com/glebateee/taskapp/internal/features/statistics/transport/http"
 	tasks_repository_postgres "github.com/glebateee/taskapp/internal/features/tasks/repository/postgres"
 	tasks_service "github.com/glebateee/taskapp/internal/features/tasks/service"
 	tasks_transport_http "github.com/glebateee/taskapp/internal/features/tasks/transport/http"
@@ -58,6 +61,12 @@ func main() {
 	tasksService := tasks_service.NewTasksService(tasksRepository)
 	tasksTransportHTTP := tasks_transport_http.NewTasksHTTPHandler(tasksService)
 
+	logger.Debug("initializing feature", zap.String("feature", "statistics"))
+
+	statisticsRepository := statistics_repository_postgres.NewStatisticsRepository(pool)
+	statisticsService := statistics_service.NewStatisticsService(statisticsRepository)
+	statisticsTransportHTTP := statistics_transport_http.NewStatisticsHTTPHandler(statisticsService)
+
 	logger.Debug("initializing HTTP server")
 
 	httpServer := core_http_server.NewHTTPServer(
@@ -74,6 +83,7 @@ func main() {
 	)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(tasksTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(statisticsTransportHTTP.Routes()...)
 
 	httpServer.RegisterApiRouters(apiVersionRouter)
 
