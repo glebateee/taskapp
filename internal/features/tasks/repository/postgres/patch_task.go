@@ -10,21 +10,23 @@ import (
 	core_postgres_pool "github.com/glebateee/taskapp/internal/core/repository/postgres/pool"
 )
 
-func (r *TasksRepository) CreateTask(
+func (r *TasksRepository) PatchTask(
 	ctx context.Context,
+	taskID int,
 	task domain.Task,
 ) (domain.Task, error) {
+
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
-	query := `INSERT INTO taskapp.tasks(
-				title, 
-				description, 
-				completed, 
-				created_at, 
-				completed_at, 
-				author_user_id)
-			  VALUES ($1, $2, $3, $4, $5, $6)
+	query := `UPDATE taskapp.tasks
+			  SET
+				title = $1,
+				description = $2,
+				completed = $3,
+				completed_at = $4,
+				version = version + 1
+			  WHERE id = $5 AND version = $6
 			  RETURNING 
 			  	id, 
 				version, 
@@ -39,9 +41,9 @@ func (r *TasksRepository) CreateTask(
 		task.Title,
 		task.Description,
 		task.Completed,
-		task.CreatedAt,
 		task.CompletedAt,
-		task.AuthorID,
+		taskID,
+		task.Version,
 	)
 	var taskModel TaskModel
 	if err := row.Scan(
@@ -54,12 +56,12 @@ func (r *TasksRepository) CreateTask(
 		&taskModel.CompletedAt,
 		&taskModel.AuthorID,
 	); err != nil {
-		if errors.Is(err, core_postgres_pool.ErrViolatesForeignKey) {
+		if errors.Is(err, core_postgres_pool.ErrNoRows) {
 			return domain.Task{}, fmt.Errorf(
-				"%v: user with id='%d': %w",
+				"%v: task with id='%d' concurrently accessed: %w",
 				err,
-				task.AuthorID,
-				core_errors.ErrNotFound,
+				taskID,
+				core_errors.ErrConflict,
 			)
 		}
 		return domain.Task{}, fmt.Errorf("scan task: %w", err)

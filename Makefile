@@ -7,6 +7,21 @@ env-up:
 env-down:
 	docker compose down taskapp-pg
 
+pgadmin-up:
+	docker compose up -d pg-admin
+
+pgadmin-down:
+	docker compose down pg-admin
+
+env-port-up:
+	@ docker compose up -d port-forwarder
+
+env-port-down:
+	@ docker compose down port-forwarder
+
+taskapp-run:
+	@ export LOGGER_FOLDER=./out/logs && export POSTGRES_HOST=localhost && go mod tidy && go run cmd/taskapp/main.go
+
 env-cleanup:
 	@read -p "Do you really wanna delete all files? [y/N]: " ans; \
 	case "$$ans" in \
@@ -17,6 +32,17 @@ env-cleanup:
 		*) \
 			echo "Cleanup cancelled" ;; \
 	esac
+
+logs-cleanup:
+	@read -p "Do you really wanna delete all log files? [y/N]: " ans; \
+	case "$$ans" in \
+		y|Y|yes|YES) \
+			rm -rv out/logs && \
+			echo "All done!" ;; \
+		*) \
+			echo "Cleanup cancelled" ;; \
+	esac
+
 
 migrate-create:
 	@if [ -z "$(seq)" ]; then \
@@ -44,19 +70,3 @@ migrate-action:
 		-path /migrations \
 		-database "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@taskapp-pg:5432/$(POSTGRES_DB)?sslmode=disable" \
 		$(action)
-
-env-port-forward:
-	@ docker compose up -d port-forwarder
-
-env-port-close:
-	@ docker compose down port-forwarder
-
-
-env-logs:
-	@ docker compose logs -f pg
-
-env-shell:
-	@ docker exec -it taskapp-pg-1 psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
-
-taskapp-run:
-	@ export LOGGER_FOLDER=./out/logs &&  export POSTGRES_HOST=localhost && go mod tidy && 	go run cmd/taskapp/main.go

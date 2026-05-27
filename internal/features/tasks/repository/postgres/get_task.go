@@ -10,39 +10,26 @@ import (
 	core_postgres_pool "github.com/glebateee/taskapp/internal/core/repository/postgres/pool"
 )
 
-func (r *TasksRepository) CreateTask(
+func (r *TasksRepository) GetTask(
 	ctx context.Context,
-	task domain.Task,
+	taskID int,
 ) (domain.Task, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
-	query := `INSERT INTO taskapp.tasks(
+	query := `SELECT
+				id,
+				version,
 				title, 
 				description, 
 				completed, 
 				created_at, 
 				completed_at, 
-				author_user_id)
-			  VALUES ($1, $2, $3, $4, $5, $6)
-			  RETURNING 
-			  	id, 
-				version, 
-				title, 
-				description, 
-				completed, 
-				created_at, 
-				completed_at, 
-				author_user_id;`
+				author_user_id
+			  FROM taskapp.tasks
+			  WHERE id = $1;`
 
-	row := r.pool.QueryRow(ctx, query,
-		task.Title,
-		task.Description,
-		task.Completed,
-		task.CreatedAt,
-		task.CompletedAt,
-		task.AuthorID,
-	)
+	row := r.pool.QueryRow(ctx, query, taskID)
 	var taskModel TaskModel
 	if err := row.Scan(
 		&taskModel.ID,
@@ -54,11 +41,11 @@ func (r *TasksRepository) CreateTask(
 		&taskModel.CompletedAt,
 		&taskModel.AuthorID,
 	); err != nil {
-		if errors.Is(err, core_postgres_pool.ErrViolatesForeignKey) {
+		if errors.Is(err, core_postgres_pool.ErrNoRows) {
 			return domain.Task{}, fmt.Errorf(
-				"%v: user with id='%d': %w",
+				"%v: task with id='%d': %w",
 				err,
-				task.AuthorID,
+				taskID,
 				core_errors.ErrNotFound,
 			)
 		}
