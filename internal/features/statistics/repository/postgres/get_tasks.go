@@ -35,15 +35,15 @@ func (r *StatisticsRepository) GetTasks(
 	conditions := []string{}
 	if userID != nil {
 		args = append(args, userID)
-		conditions = append(conditions, fmt.Sprintf("author_user_id = $%d", len(args)+1))
+		conditions = append(conditions, fmt.Sprintf("author_user_id = $%d", len(args)))
 	}
 	if from != nil {
 		args = append(args, from)
-		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)+1))
+		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)))
 	}
 	if to != nil {
 		args = append(args, to)
-		conditions = append(conditions, fmt.Sprintf("completed_at < $%d", len(args)+1))
+		conditions = append(conditions, fmt.Sprintf("completed_at < $%d", len(args)))
 	}
 	var insert string
 	if len(conditions) > 0 {
