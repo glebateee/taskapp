@@ -26,5 +26,5 @@ CREATE TABLE taskapp.tasks(
         (completed = TRUE AND completed_at IS NOT NULL AND completed_at >= created_at)
     ),
 
-    author_user_id  INTEGER         NOT NULL    REFERENCES  taskapp.users(id)
+    author_id  INTEGER         NOT NULL    REFERENCES  taskapp.users(id)
 );

@@ -1,5 +1,5 @@
-DROP TABLE todoapp.tasks;
+DROP TABLE taskapp.tasks;
 
-DROP TABLE todoapp.users;
+DROP TABLE taskapp.users;
 
-DROP SCHEMA todoapp;
+DROP SCHEMA taskapp;
