@@ -1,4 +1,25 @@
 services:
+  taskapp:
+    build:
+      context:  .
+      dockerfile: ./cmd/taskapp/Dockerfile
+    environment:
+      - POSTGRES_HOST=taskapp-pg
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_TIMEOUT=${POSTGRES_TIMEOUT}
+      - HTTP_ADDR=:5050
+      - HTTP_SHUTDOWN_TIMEOUT=${HTTP_SHUTDOWN_TIMEOUT}
+      - TIME_ZONE=${TIME_ZONE}
+      - LOGGER_LEVEL=${LOGGER_LEVEL}
+      - LOGGER_FOLDER=/app/out/logs
+    volumes:
+      - ./out/logs:/app/out/logs
+    ports:
+      - "5050:5050"
+    restart: always
+
   taskapp-pg:
     image: postgres:15
     environment:
@@ -7,7 +28,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - ./out/pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
+    restart: always
 
   pg-admin:
     image: dpage/pgadmin4:latest
@@ -15,9 +36,9 @@ services:
       - PGADMIN_DEFAULT_EMAIL=admin@example.com
       - PGADMIN_DEFAULT_PASSWORD=${POSTGRES_PASSWORD}
       - PGADMIN_CONFIG_SERVER_MODE=False
-      - PGADMIN_LISTEN_PORT=8080   # <- веб-порт
+      - PGADMIN_LISTEN_PORT=8080
     ports:
-      - "127.0.0.1:823:8080"       # <- хост:823 → контейнер:8080
+      - "127.0.0.1:823:8080"   
     restart: unless-stopped
 
   pg-migrate:

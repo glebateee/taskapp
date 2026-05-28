@@ -22,6 +22,12 @@ env-port-down:
 taskapp-run:
 	@ export LOGGER_FOLDER=./out/logs && export POSTGRES_HOST=localhost && go mod tidy && go run cmd/taskapp/main.go
 
+taskapp-deploy:
+	@docker compose up -d --build taskapp
+
+ps:
+	@docker compose ps
+	
 env-cleanup:
 	@read -p "Do you really wanna delete all files? [y/N]: " ans; \
 	case "$$ans" in \
