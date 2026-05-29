@@ -25,9 +25,18 @@ taskapp-run:
 taskapp-deploy:
 	@docker compose up -d --build taskapp
 
+swagger-gen:
+	@docker compose run --rm swagger \
+	init \
+	-g cmd/taskapp/main.go \
+	-o docs \
+	--parseInternal \
+	--parseDependency
+
+
 ps:
 	@docker compose ps
-	
+
 env-cleanup:
 	@read -p "Do you really wanna delete all files? [y/N]: " ans; \
 	case "$$ans" in \

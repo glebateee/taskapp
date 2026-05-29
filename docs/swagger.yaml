@@ -1,0 +1,248 @@
+basePath: /api/v1
+definitions:
+  github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse:
+    properties:
+      error:
+        example: error description from application
+        type: string
+      message:
+        example: human-readable description of error
+        type: string
+    type: object
+  internal_features_users_transport_http.CreateUserRequest:
+    properties:
+      full_name:
+        example: Глебати Станюлити
+        maxLength: 100
+        minLength: 3
+        type: string
+      phone_number:
+        example: "+77766655544"
+        maxLength: 15
+        minLength: 10
+        type: string
+    required:
+    - full_name
+    type: object
+  internal_features_users_transport_http.CreateUserResponse:
+    properties:
+      full_name:
+        example: Номинальный Номинал Номиналович
+        type: string
+      id:
+        example: 12
+        type: integer
+      phone_number:
+        example: "+1234567890123"
+        type: string
+      version:
+        example: 2
+        type: integer
+    type: object
+  internal_features_users_transport_http.PatchUserRequest:
+    properties:
+      full_name:
+        example: Максичка Кахановочка
+        type: string
+      phone_number:
+        example: "+7688688809898"
+        type: string
+    type: object
+  internal_features_users_transport_http.PatchUserResponse:
+    properties:
+      full_name:
+        example: Номинальный Номинал Номиналович
+        type: string
+      id:
+        example: 12
+        type: integer
+      phone_number:
+        example: "+1234567890123"
+        type: string
+      version:
+        example: 2
+        type: integer
+    type: object
+  internal_features_users_transport_http.UserDTOResponse:
+    properties:
+      full_name:
+        example: Номинальный Номинал Номиналович
+        type: string
+      id:
+        example: 12
+        type: integer
+      phone_number:
+        example: "+1234567890123"
+        type: string
+      version:
+        example: 2
+        type: integer
+    type: object
+host: 127.0.0.1:5050
+info:
+  contact: {}
+  description: ToDo application REST-API scheme
+  title: Golang TaskApp API
+  version: "1.0"
+paths:
+  /users:
+    get:
+      description: Get list of users with jptional pagination
+      parameters:
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      - description: Offset from list head
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Users list successfully retrieved
+          schema:
+            items:
+              $ref: '#/definitions/internal_features_users_transport_http.UserDTOResponse'
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+      summary: List of users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create new user in system
+      parameters:
+      - description: CreateUser request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_users_transport_http.CreateUserRequest'
+      responses:
+        "201":
+          description: Successfully created user
+          schema:
+            $ref: '#/definitions/internal_features_users_transport_http.CreateUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+      summary: Create User
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: Delete user from system by it's ID
+      parameters:
+      - description: User's to delete ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: User successfully deleted
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+      summary: Delete User
+      tags:
+      - users
+    get:
+      description: Get user from system by ID
+      parameters:
+      - description: ID of retrieving user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+      summary: Get User
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Changing information about user in system
+        ### Logic of fields updating
+        1.**Field not provided**: `phone_number` ignored, value in DB not changed
+        2.**Value provided, not null**: `phone_number : +1312313234` sets new value to record field in DB
+        3.**Value provided, null**: `phone_number : +null` sets NULL to record field in DB
+        Constraints: `full_name` value can't be set to null
+      parameters:
+      - description: ID of user to change
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Patch user request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_features_users_transport_http.PatchUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully patched user
+          schema:
+            $ref: '#/definitions/internal_features_users_transport_http.PatchUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_glebateee_taskapp_internal_core_transport_http_response.ErrorResponse'
+      summary: Patching user
+      tags:
+      - users
+swagger: "2.0"

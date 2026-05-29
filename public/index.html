@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaskApp — Управление задачами</title>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-sidebar: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --border: #e2e8f0;
+      --shadow: 0 4px 12px rgba(0,0,0,0.05);
+      --card-bg: #ffffff;
+      --input-bg: #ffffff;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --transition: 0.2s ease;
+      --glow-success: 0 0 8px rgba(16, 185, 129, 0.5);
+      --glow-warning: 0 0 8px rgba(245, 158, 11, 0.5);
+    }
+    .dark {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-sidebar: #1a2236;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --border: #334155;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+      --card-bg: #1e293b;
+      --input-bg: #0f172a;
+      --glow-success: 0 0 10px rgba(16, 185, 129, 0.6);
+      --glow-warning: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background var(--transition), color var(--transition);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow);
+      z-index: 20;
+    }
+    .header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .header h1:hover { opacity: 0.8; }
+    .theme-toggle { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); }
+    .switch { position: relative; display: inline-block; width: 48px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--border); border-radius: 24px; transition: var(--transition);
+    }
+    .slider:before {
+      content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: var(--transition);
+    }
+    input:checked + .slider { background: var(--accent); }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .sidebar {
+      width: 240px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      transition: background var(--transition);
+    }
+    .nav-btn {
+      width: 100%; text-align: left; padding: 0.8rem 1.5rem;
+      background: transparent; border: none; color: var(--text-secondary);
+      font-size: 0.95rem; font-weight: 500; cursor: pointer;
+      transition: all var(--transition); border-left: 3px solid transparent;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .nav-btn:hover { background: rgba(0,0,0,0.03); color: var(--text-primary); }
+    .dark .nav-btn:hover { background: rgba(255,255,255,0.03); }
+    .nav-btn.active {
+      border-left-color: var(--accent); background: rgba(37,99,235,0.08);
+      color: var(--accent); font-weight: 600;
+    }
+
+    .content {
+      flex: 1; overflow-y: auto; padding: 2rem;
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+      box-shadow: var(--shadow); cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .card-subtitle { font-size: 0.85rem; color: var(--text-secondary); }
+    .card-footer { margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+    .badge {
+      padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .dark .badge-success { background: #064e3b; color: #a7f3d0; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .dark .badge-warning { background: #78350f; color: #fcd34d; }
+
+    .btn {
+      padding: 0.5rem 1.25rem; border: none; border-radius: 8px; font-weight: 500;
+      cursor: pointer; transition: background var(--transition), opacity 0.2s;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); }
+    .btn-outline:hover { background: var(--border); }
+
+    .btn-round {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid var(--border); background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--transition);
+      font-size: 1.2rem; font-weight: 700; color: var(--text-primary);
+      flex-shrink: 0;
+    }
+    .btn-round.completed {
+      border-color: var(--success); background: var(--success);
+      color: white;
+    }
+    .btn-round:hover { border-color: var(--accent); }
+    .btn-round.completed:hover { background: #059669; }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center;
+      justify-content: center; z-index: 100;
+    }
+    .modal {
+      background: var(--bg-primary); border-radius: var(--radius);
+      padding: 2rem; width: 90%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 1.5rem; font-weight: 600; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.3rem; color: var(--text-secondary); text-transform: uppercase; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--input-bg); color: var(--text-primary); font-size: 0.9rem; outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .back-btn { cursor: pointer; color: var(--accent); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.3rem; margin-bottom: 1rem; }
+
+    .stats-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-box {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.75rem 1rem; text-align: center; flex: 1; min-width: 100px;
+    }
+    .stat-value { font-size: 1.3rem; font-weight: 700; }
+    .stat-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem; }
+
+    .task-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .task-item {
+      display: flex; align-items: center; gap: 1rem; padding: 0.8rem;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; transition: background var(--transition);
+    }
+    .task-item:hover { background: var(--bg-secondary); }
+    .task-item .task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+    .task-item .task-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-item .task-desc { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-meta {
+      font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+    }
+    .author-badge {
+      background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.2rem 0.6rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .status-glow-success {
+      color: var(--success); font-weight: 600;
+      text-shadow: var(--glow-success);
+    }
+    .status-glow-warning {
+      color: var(--warning); font-weight: 600;
+      text-shadow: var(--glow-warning);
+    }
+
+    .stats-form {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .stats-form .form-row {
+      display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;
+    }
+    .input-with-icon {
+      position: relative; flex: 1; min-width: 160px;
+    }
+    .input-with-icon input {
+      padding-left: 2.2rem; width: 100%; padding: 0.6rem 0.8rem 0.6rem 2.2rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--input-bg); color: var(--text-primary); font-size: 0.9rem;
+      outline: none;
+    }
+    .input-with-icon input:focus { border-color: var(--accent); }
+    .input-with-icon .icon {
+      position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
+      color: var(--text-secondary); font-size: 1rem; pointer-events: none;
+    }
+    ::placeholder { color: var(--text-secondary); opacity: 0.6; }
+
+    @media (max-width: 640px) {
+      .sidebar { width: 80px; }
+      .nav-btn { justify-content: center; padding: 0.8rem; }
+      .nav-btn span:not(.icon) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1 id="logo">📋 TaskApp</h1>
+    <div class="theme-toggle">
+      <span>🌙</span>
+      <label class="switch">
+        <input type="checkbox" id="themeCheckbox">
+        <span class="slider"></span>
+      </label>
+      <span>☀️</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="sidebar" id="sidebar">
+      <button class="nav-btn active" data-page="users">
+        <span class="icon">👥</span> <span>Пользователи</span>
+      </button>
+      <button class="nav-btn" data-page="tasks">
+        <span class="icon">📝</span> <span>Задачи</span>
+      </button>
+      <button class="nav-btn" data-page="statistics">
+        <span class="icon">📊</span> <span>Статистика</span>
+      </button>
+    </aside>
+    <main class="content" id="content"></main>
+  </div>
+
+  <script>
+    (function() {
+      const API = '/api/v1';
+
+      // State
+      let currentPage = 'users';
+      let currentUserId = null;
+      let currentTaskId = null;
+      const content = document.getElementById('content');
+
+      // Cache for user names
+      const usersMap = new Map();
+
+      // Load all users into cache
+      async function refreshUsersMap() {
+        try {
+          const res = await fetch(`${API}/users`);
+          if (!res.ok) return;
+          const users = await res.json();
+          usersMap.clear();
+          users.forEach(u => usersMap.set(u.id, u.full_name));
+        } catch(e) {}
+      }
+
+      // Initial load
+      refreshUsersMap();
+
+      // Theme
+      const themeCheckbox = document.getElementById('themeCheckbox');
+      const savedTheme = localStorage.getItem('taskapp-theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        themeCheckbox.checked = true;
+      }
+      themeCheckbox.addEventListener('change', () => {
+        if (themeCheckbox.checked) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('taskapp-theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('taskapp-theme', 'light');
+        }
+      });
+
+      // Logo click to go home
+      document.getElementById('logo').addEventListener('click', () => {
+        currentPage = 'users';
+        currentUserId = null;
+        currentTaskId = null;
+        updateActiveNav();
+        renderPage();
+      });
+
+      // Navigation
+      const sidebarButtons = document.querySelectorAll('.nav-btn');
+      sidebarButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const page = btn.dataset.page;
+          currentPage = page;
+          currentUserId = null;
+          currentTaskId = null;
+          updateActiveNav();
+          renderPage();
+        });
+      });
+
+      function updateActiveNav() {
+        sidebarButtons.forEach(b => b.classList.remove('active'));
+        const active = document.querySelector(`[data-page="${currentPage}"]`);
+        if (active) active.classList.add('active');
+      }
+
+      // Page dispatcher
+      async function renderPage() {
+        content.innerHTML = '';
+        switch (currentPage) {
+          case 'users': await renderUsersList(); break;
+          case 'tasks': await renderTasksList(); break;
+          case 'statistics': renderStatisticsPage(); break;
+          case 'userDetail': await renderUserDetail(currentUserId); break;
+          case 'taskDetail': await renderTaskDetail(currentTaskId); break;
+        }
+      }
+
+      // ---------- USERS LIST ----------
+      async function renderUsersList() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+          <div class="section-header">
+            <h2>👥 Пользователи</h2>
+            <button class="btn btn-primary" id="createUserBtn">➕ Создать пользователя</button>
+          </div>
+          <div id="usersGrid" class="cards-grid"></div>
+        `;
+        content.appendChild(container);
+        document.getElementById('createUserBtn').addEventListener('click', () => showUserModal());
+        await loadUsers();
+      }
+
+      async function loadUsers() {
+        const grid = document.getElementById('usersGrid');
+        try {
+          const res = await fetch(`${API}/users`);
+          const users = await res.json();
+          // Update cache
+          usersMap.clear();
+          users.forEach(u => usersMap.set(u.id, u.full_name));
+          grid.innerHTML = '';
+          if (users.length === 0) {
+            grid.innerHTML = '<div class="empty-state">Пользователей пока нет</div>';
+            return;
+          }
+          users.forEach(user => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+              <div class="card-title">${escapeHtml(user.full_name)}</div>
+              <div class="card-subtitle">📞 ${user.phone_number || '—'}</div>
+              <div class="card-footer">
+                <span class="badge badge-warning">ID ${user.id}</span>
+                <button class="btn btn-outline">Подробнее</button>
+              </div>
+            `;
+            card.addEventListener('click', () => navigateToUser(user.id));
+            grid.appendChild(card);
+          });
+        } catch (err) {
+          grid.innerHTML = '<div class="error-message">Ошибка загрузки пользователей</div>';
+        }
+      }
+
+      // ---------- USER DETAIL ----------
+      async function renderUserDetail(userId) {
+        content.innerHTML = '<div class="error-message">Загрузка...</div>';
+        try {
+          const [userRes, tasksRes, statsRes] = await Promise.all([
+            fetch(`${API}/users/${userId}`),
+            fetch(`${API}/tasks?user_id=${userId}`),
+            fetch(`${API}/statistics?user_id=${userId}`)
+          ]);
+          if (!userRes.ok) throw new Error('User not found');
+          const user = await userRes.json();
+          const tasks = await tasksRes.json();
+          const stats = await statsRes.json();
+
+          content.innerHTML = `
+            <div class="back-btn" id="backToUsers">← Назад к пользователям</div>
+            <div class="card" style="cursor:default; margin-bottom:1rem;">
+              <div class="section-header">
+                <h2>${escapeHtml(user.full_name)}</h2>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-outline" id="editUserBtn">✏️ Редактировать</button>
+                  <button class="btn btn-danger" id="deleteUserBtn">🗑️ Удалить</button>
+                </div>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:1rem; margin: 0.5rem 0;">
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">📞 Телефон</div>
+                  <div class="stat-value" style="font-size:1rem;">${user.phone_number || '—'}</div>
+                </div>
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">ID</div>
+                  <div class="stat-value" style="font-size:1rem;">${user.id}</div>
+                </div>
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">Версия</div>
+                  <div class="stat-value" style="font-size:1rem;">${user.version}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="stats-row" id="userStats"></div>
+
+            <div class="section-header">
+              <h3>📝 Задачи пользователя</h3>
+              <button class="btn btn-primary" id="createTaskForUserBtn">➕ Новая задача</button>
+            </div>
+            <div id="userTasksContainer" class="task-list"></div>
+          `;
+
+          // Stats
+          const statsRow = document.getElementById('userStats');
+          statsRow.innerHTML = `
+            <div class="stat-box"><div class="stat-value">${stats.tasks_created}</div><div class="stat-label">Создано</div></div>
+            <div class="stat-box"><div class="stat-value">${stats.tasks_completed}</div><div class="stat-label">Завершено</div></div>
+            <div class="stat-box"><div class="stat-value">${stats.tasks_completed_rate != null ? stats.tasks_completed_rate.toFixed(1)+'%' : '—'}</div><div class="stat-label">% выполнения</div></div>
+            <div class="stat-box"><div class="stat-value">${stats.tasks_average_completion_time || '—'}</div><div class="stat-label">Среднее время</div></div>
+          `;
+
+          // Tasks list (hide author, show status/duration)
+          const taskContainer = document.getElementById('userTasksContainer');
+          if (tasks.length === 0) {
+            taskContainer.innerHTML = '<div class="empty-state">У этого пользователя пока нет задач</div>';
+          } else {
+            tasks.forEach(task => {
+              taskContainer.appendChild(createTaskItem(task, false)); // false = no author
+            });
+          }
+
+          // Events
+          document.getElementById('backToUsers').addEventListener('click', () => {
+            currentPage = 'users';
+            currentUserId = null;
+            updateActiveNav();
+            renderPage();
+          });
+          document.getElementById('editUserBtn').addEventListener('click', () => showUserModal(user));
+          document.getElementById('deleteUserBtn').addEventListener('click', () => deleteUser(user.id));
+          document.getElementById('createTaskForUserBtn').addEventListener('click', () => showTaskModal(null, userId));
+
+        } catch (err) {
+          content.innerHTML = '<div class="error-message">Пользователь не найден</div>';
+        }
+      }
+
+      // ---------- TASKS LIST (all tasks) ----------
+      async function renderTasksList() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+          <div class="section-header">
+            <h2>📝 Все задачи</h2>
+            <button class="btn btn-primary" id="createTaskBtn">➕ Создать задачу</button>
+          </div>
+          <div id="tasksContainer" class="task-list"></div>
+        `;
+        content.appendChild(container);
+        document.getElementById('createTaskBtn').addEventListener('click', () => showTaskModal());
+        await loadTasks();
+      }
+
+      async function loadTasks() {
+        const taskContainer = document.getElementById('tasksContainer');
+        try {
+          await refreshUsersMap(); // ensure cache is fresh
+          const res = await fetch(`${API}/tasks`);
+          const tasks = await res.json();
+          taskContainer.innerHTML = '';
+          if (tasks.length === 0) {
+            taskContainer.innerHTML = '<div class="empty-state">Задач пока нет</div>';
+            return;
+          }
+          tasks.forEach(task => {
+            taskContainer.appendChild(createTaskItem(task, true)); // show author
+          });
+        } catch (err) {
+          taskContainer.innerHTML = '<div class="error-message">Ошибка загрузки задач</div>';
+        }
+      }
+
+      // Helper to format duration
+      function formatDuration(ms) {
+        if (ms < 0) ms = 0;
+        const totalMinutes = Math.floor(ms / 60000);
+        const days = Math.floor(totalMinutes / 1440);
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+        const minutes = totalMinutes % 60;
+        let parts = [];
+        if (days > 0) parts.push(`${days} дн.`);
+        if (hours > 0) parts.push(`${hours} ч.`);
+        if (minutes > 0 || parts.length === 0) parts.push(`${minutes} мин.`);
+        return parts.join(' ');
+      }
+
+      // Format date as dd.mm.yyyy
+      function formatDate(isoString) {
+        const d = new Date(isoString);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}.${month}.${year}`;
+      }
+
+      // Format time as hh:mm
+      function formatTime(isoString) {
+        const d = new Date(isoString);
+        return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Get task status display with duration
+      function getTaskStatusDisplay(task) {
+        const created = new Date(task.created_at);
+        if (task.completed) {
+          const completed = new Date(task.completed_at);
+          const durationMs = completed - created;
+          return `<span class="status-glow-success">✅ Завершена (${formatDuration(durationMs)})</span>`;
+        } else {
+          const now = Date.now();
+          const durationMs = now - created;
+          return `<span class="status-glow-warning">🕒 В работе (${formatDuration(durationMs)})</span>`;
+        }
+      }
+
+      // Create task list item with optional author badge
+      function createTaskItem(task, showAuthor = true) {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        const authorName = showAuthor ? (usersMap.get(task.author_id) || '') : '';
+        const statusHtml = getTaskStatusDisplay(task);
+
+        let metaHtml = '';
+        if (showAuthor && authorName) {
+          metaHtml += `<span class="author-badge">👤 ${escapeHtml(authorName)}</span>`;
+        }
+        metaHtml += statusHtml;
+
+        item.innerHTML = `
+          <div class="task-info">
+            <div class="task-title">${escapeHtml(task.title)}</div>
+            <div class="task-desc">${escapeHtml(task.description || '')}</div>
+            <div class="task-meta">${metaHtml}</div>
+          </div>
+          <button class="btn-round ${task.completed ? 'completed' : ''}" data-taskid="${task.id}">
+            ${task.completed ? '✓' : ''}
+          </button>
+          <button class="btn btn-danger" style="padding:0.3rem 0.6rem;" data-delete="${task.id}">🗑️</button>
+        `;
+
+        const toggleBtn = item.querySelector('.btn-round');
+        toggleBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await toggleTaskCompletion(task.id, !task.completed, showAuthor ? null : currentUserId);
+        });
+
+        const deleteBtn = item.querySelector('[data-delete]');
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteTask(task.id, showAuthor ? null : currentUserId);
+        });
+
+        item.addEventListener('click', () => navigateToTask(task.id));
+        return item;
+      }
+
+      async function toggleTaskCompletion(taskId, completed, userId) {
+        try {
+          const res = await fetch(`${API}/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed })
+          });
+          if (!res.ok) throw new Error('Failed to update task');
+          if (currentPage === 'userDetail' && currentUserId === userId) {
+            await renderUserDetail(userId);
+          } else if (currentPage === 'taskDetail' && currentTaskId === taskId) {
+            await renderTaskDetail(taskId);
+          } else {
+            renderPage();
+          }
+        } catch (err) {
+          alert('Ошибка при изменении статуса задачи');
+        }
+      }
+
+      async function deleteTask(taskId, userId) {
+        if (!confirm('Удалить задачу?')) return;
+        await fetch(`${API}/tasks/${taskId}`, { method: 'DELETE' });
+        if (currentPage === 'userDetail' && currentUserId === userId) {
+          renderUserDetail(userId);
+        } else if (currentPage === 'taskDetail' && currentTaskId === taskId) {
+          currentPage = 'tasks';
+          currentTaskId = null;
+          updateActiveNav();
+          renderPage();
+        } else {
+          renderPage();
+        }
+      }
+
+      // ---------- TASK DETAIL (restored time) ----------
+      async function renderTaskDetail(taskId) {
+        content.innerHTML = '<div class="error-message">Загрузка...</div>';
+        try {
+          const res = await fetch(`${API}/tasks/${taskId}`);
+          if (!res.ok) throw new Error('Not found');
+          const task = await res.json();
+
+          let authorName = usersMap.get(task.author_id);
+          if (!authorName) {
+            try {
+              const userRes = await fetch(`${API}/users/${task.author_id}`);
+              if (userRes.ok) {
+                const user = await userRes.json();
+                authorName = user.full_name;
+                usersMap.set(task.author_id, authorName);
+              }
+            } catch(e) {}
+          }
+
+          const statusDisplay = getTaskStatusDisplay(task);
+
+          content.innerHTML = `
+            <div class="back-btn" id="backToTasks">← Назад к задачам</div>
+            <div class="card" style="cursor:default;">
+              <div class="section-header">
+                <h2>${escapeHtml(task.title)}</h2>
+                <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-outline" id="editTaskBtn">✏️ Редактировать</button>
+                  <button class="btn btn-danger" id="deleteTaskBtn">🗑️ Удалить</button>
+                </div>
+              </div>
+              <p style="color:var(--text-secondary); margin-bottom:1rem;">${escapeHtml(task.description || 'Без описания')}</p>
+              <div style="display:flex; flex-wrap:wrap; gap:1rem; margin: 0.5rem 0;">
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">Статус</div>
+                  <div class="stat-value" style="font-size:1rem;">${statusDisplay}</div>
+                </div>
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">Создана</div>
+                  <div class="stat-value" style="font-size:1rem;">${formatDate(task.created_at)} ${formatTime(task.created_at)}</div>
+                </div>
+                ${task.completed_at ? `
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">Завершена</div>
+                  <div class="stat-value" style="font-size:1rem;">${formatDate(task.completed_at)} ${formatTime(task.completed_at)}</div>
+                </div>` : ''}
+                <div class="stat-box" style="flex:0 1 auto; min-width:100px;">
+                  <div class="stat-label">Автор</div>
+                  <div class="stat-value" style="font-size:1rem;">${escapeHtml(authorName || 'ID '+task.author_id)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+          document.getElementById('backToTasks').addEventListener('click', () => {
+            currentPage = 'tasks';
+            currentTaskId = null;
+            updateActiveNav();
+            renderPage();
+          });
+          document.getElementById('editTaskBtn').addEventListener('click', () => showTaskModal(task));
+          document.getElementById('deleteTaskBtn').addEventListener('click', () => deleteTask(task.id));
+        } catch (err) {
+          content.innerHTML = '<div class="error-message">Задача не найдена</div>';
+        }
+      }
+
+      // ---------- STATISTICS PAGE (fixed date input) ----------
+      function renderStatisticsPage() {
+        const container = document.createElement('div');
+        container.innerHTML = `
+          <h2>📊 Статистика</h2>
+          <div class="stats-form">
+            <div class="form-row">
+              <div class="input-with-icon">
+                <span class="icon">👤</span>
+                <input type="text" inputmode="numeric" id="statUserId" placeholder="ID пользователя" autocomplete="off">
+              </div>
+              <div class="input-with-icon">
+                <span class="icon">📅</span>
+                <input type="text" class="date-input" id="statFrom" placeholder="дд.мм.гггг" maxlength="10" autocomplete="off">
+              </div>
+              <div class="input-with-icon">
+                <span class="icon">📅</span>
+                <input type="text" class="date-input" id="statTo" placeholder="дд.мм.гггг" maxlength="10" autocomplete="off">
+              </div>
+              <button class="btn btn-primary" id="loadStatsBtn">📈 Загрузить</button>
+            </div>
+          </div>
+          <div id="statsResult"></div>
+        `;
+        content.appendChild(container);
+
+        // Attach date mask + validation (now supports full 4-digit year)
+        const dateInputs = document.querySelectorAll('.date-input');
+        dateInputs.forEach(input => {
+          input.addEventListener('input', function(e) {
+            let value = this.value.replace(/[^\d]/g, '');
+            // Allow up to 8 digits (ddmmyyyy)
+            if (value.length > 8) value = value.slice(0, 8);
+            // Insert dots
+            if (value.length > 2) value = value.slice(0,2) + '.' + value.slice(2);
+            if (value.length > 5) value = value.slice(0,5) + '.' + value.slice(5,8);
+
+            // Validate day and month (basic)
+            const parts = value.split('.');
+            if (parts.length >= 2) {
+              let day = parseInt(parts[0], 10);
+              if (!isNaN(day) && day > 31) {
+                parts[0] = '31';
+              }
+              let month = parseInt(parts[1], 10);
+              if (!isNaN(month) && month > 12) {
+                parts[1] = '12';
+              }
+              value = parts.join('.');
+            }
+            this.value = value;
+          });
+          input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' || e.key === 'Delete' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab') return;
+            if (!/[\d]/.test(e.key) && e.key.length === 1) {
+              e.preventDefault();
+            }
+          });
+        });
+
+        document.getElementById('loadStatsBtn').addEventListener('click', loadStatistics);
+        loadStatistics();
+      }
+
+      function parseDateInput(str) {
+        if (!str || str.length !== 10) return null;
+        const parts = str.split('.');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+        if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1000 || year > 9999) return null;
+        return `${year.toString().padStart(4,'0')}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}`;
+      }
+
+      async function loadStatistics() {
+        const userId = document.getElementById('statUserId')?.value.trim() || null;
+        const fromRaw = document.getElementById('statFrom')?.value || '';
+        const toRaw = document.getElementById('statTo')?.value || '';
+        const from = parseDateInput(fromRaw);
+        const to = parseDateInput(toRaw);
+        const params = new URLSearchParams();
+        if (userId) params.append('user_id', userId);
+        if (from) params.append('from', from);
+        if (to) params.append('to', to);
+        const res = await fetch(`${API}/statistics?${params.toString()}`);
+        const data = await res.json();
+        const resultDiv = document.getElementById('statsResult');
+        if (!resultDiv) return;
+        resultDiv.innerHTML = `
+          <div class="stats-row">
+            <div class="stat-box"><div class="stat-value">${data.tasks_created}</div><div class="stat-label">Создано</div></div>
+            <div class="stat-box"><div class="stat-value">${data.tasks_completed}</div><div class="stat-label">Завершено</div></div>
+            <div class="stat-box"><div class="stat-value">${data.tasks_completed_rate != null ? data.tasks_completed_rate.toFixed(1)+'%' : '—'}</div><div class="stat-label">% завершения</div></div>
+            <div class="stat-box"><div class="stat-value">${data.tasks_average_completion_time || '—'}</div><div class="stat-label">Среднее время</div></div>
+          </div>
+        `;
+      }
+
+      // ---------- NAVIGATION HELPERS ----------
+      function navigateToUser(id) {
+        currentUserId = id;
+        currentPage = 'userDetail';
+        updateActiveNav();
+        renderPage();
+      }
+
+      function navigateToTask(id) {
+        currentTaskId = id;
+        currentPage = 'taskDetail';
+        updateActiveNav();
+        renderPage();
+      }
+
+      // ---------- MODALS ----------
+      function showModal(title, fields, onSubmit) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+          <div class="modal">
+            <h2>${title}</h2>
+            <div id="modalFields"></div>
+            <div class="form-actions">
+              <button class="btn btn-outline" id="modalCancel">Отмена</button>
+              <button class="btn btn-primary" id="modalSubmit">Сохранить</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const fieldsContainer = document.getElementById('modalFields');
+        for (const [key, value] of Object.entries(fields)) {
+          const group = document.createElement('div');
+          group.className = 'form-group';
+          const type = typeof value === 'boolean' ? 'checkbox' : 'text';
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="${type}" id="field_${key}" value="${type!=='checkbox' ? value||'' : ''}" ${type==='checkbox' && value ? 'checked' : ''}>
+          `;
+          fieldsContainer.appendChild(group);
+        }
+
+        document.getElementById('modalCancel').addEventListener('click', () => overlay.remove());
+        document.getElementById('modalSubmit').addEventListener('click', () => {
+          const data = {};
+          for (const key of Object.keys(fields)) {
+            const input = document.getElementById(`field_${key}`);
+            if (input.type === 'checkbox') data[key] = input.checked;
+            else data[key] = input.value;
+          }
+          onSubmit(data);
+          overlay.remove();
+        });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      }
+
+      function showUserModal(user = null) {
+        const fields = user ? { full_name: user.full_name, phone_number: user.phone_number || '' } : { full_name: '', phone_number: '' };
+        showModal(user ? 'Редактировать пользователя' : 'Создать пользователя', fields, async (data) => {
+          const payload = { full_name: data.full_name, phone_number: data.phone_number || null };
+          let res;
+          if (user) {
+            res = await fetch(`${API}/users/${user.id}`, {
+              method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+          } else {
+            res = await fetch(`${API}/users`, {
+              method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+          }
+          if (!res.ok) alert('Ошибка сохранения');
+          else {
+            await refreshUsersMap();
+            renderPage();
+          }
+        });
+      }
+
+      function showTaskModal(task = null, authorId = null) {
+        const fields = task ? { title: task.title, description: task.description || '', completed: task.completed }
+                            : { title: '', description: '', author_id: authorId || 1 };
+        showModal(task ? 'Редактировать задачу' : 'Создать задачу', fields, async (data) => {
+          const payload = {
+            title: data.title,
+            description: data.description || null,
+            ...(task ? { completed: data.completed } : { author_id: parseInt(data.author_id) || 1 })
+          };
+          let res;
+          if (task) {
+            res = await fetch(`${API}/tasks/${task.id}`, {
+              method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+          } else {
+            res = await fetch(`${API}/tasks`, {
+              method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+          }
+          if (!res.ok) alert('Ошибка сохранения');
+          else renderPage();
+        });
+      }
+
+      async function deleteUser(id) {
+        if (!confirm('Удалить пользователя?')) return;
+        await fetch(`${API}/users/${id}`, { method: 'DELETE' });
+        currentPage = 'users';
+        currentUserId = null;
+        await refreshUsersMap();
+        renderPage();
+      }
+
+      function escapeHtml(text) {
+        return String(text).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+      }
+
+      // Init
+      updateActiveNav();
+      renderPage();
+    })();
+  </script>
+</body>
+</html>

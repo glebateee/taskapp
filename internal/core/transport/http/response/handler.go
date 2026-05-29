@@ -26,6 +26,14 @@ func NewHTTPResponseHandler(
 	}
 }
 
+func (h *HTTPResponseHandler) HTMLResponse(file []byte) {
+	h.w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	h.w.WriteHeader(http.StatusOK)
+	_, err := h.w.Write(file)
+	if err != nil {
+		h.logger.Error("write html HTTP response", zap.Error(err))
+	}
+}
 func (h *HTTPResponseHandler) ErrorResponse(err error, msg string) {
 	var (
 		statusCode int
@@ -65,9 +73,9 @@ func (h *HTTPResponseHandler) errorResponse(
 	msg string,
 ) {
 
-	response := map[string]string{
-		"message": msg,
-		"error":   err.Error(),
+	response := ErrorResponse{
+		Error:   err.Error(),
+		Message: msg,
 	}
 	h.JSONResponse(response, statusCode)
 }
@@ -76,6 +84,7 @@ func (h *HTTPResponseHandler) JSONResponse(
 	body any,
 	statusCode int,
 ) {
+	h.w.Header().Set("Content-Type", "application/json")
 	h.w.WriteHeader(statusCode)
 	if err := json.NewEncoder(h.w).Encode(body); err != nil {
 		h.logger.Error("write HTTP response", zap.Error(err))

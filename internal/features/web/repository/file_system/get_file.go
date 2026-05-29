@@ -1,0 +1,27 @@
+package web_fs_repository
+
+import (
+	"fmt"
+	"os"
+
+	core_errors "github.com/glebateee/taskapp/internal/core/errors"
+)
+
+func (r *WebRepository) GetFile(path string) ([]byte, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf(
+				"file %s: %w",
+				path,
+				core_errors.ErrNotFound,
+			)
+		}
+		return nil, fmt.Errorf(
+			"file %s: %w",
+			path,
+			err,
+		)
+	}
+	return file, nil
+}

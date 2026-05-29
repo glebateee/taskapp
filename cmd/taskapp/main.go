@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/glebateee/taskapp/docs"
 	core_config "github.com/glebateee/taskapp/internal/core/config"
 	core_logger "github.com/glebateee/taskapp/internal/core/logger"
 	core_pgx_pool "github.com/glebateee/taskapp/internal/core/repository/postgres/pool/pgx"
@@ -22,9 +23,17 @@ import (
 	users_repository_postgres "github.com/glebateee/taskapp/internal/features/users/repository/postgres"
 	users_service "github.com/glebateee/taskapp/internal/features/users/service"
 	users_transport_http "github.com/glebateee/taskapp/internal/features/users/transport/http"
+	web_fs_repository "github.com/glebateee/taskapp/internal/features/web/repository/file_system"
+	web_service "github.com/glebateee/taskapp/internal/features/web/service"
+	web_transport_http "github.com/glebateee/taskapp/internal/features/web/transport/http"
 	"go.uber.org/zap"
 )
 
+// @title 			Golang TaskApp API
+// @version 		1.0
+// @description 	ToDo application REST-API scheme
+// @host 			127.0.0.1:5050
+// @BasePath 		/api/v1
 func main() {
 	cfg := core_config.NewConfigMust()
 	time.Local = cfg.TimeZone
@@ -67,11 +76,18 @@ func main() {
 	statisticsService := statistics_service.NewStatisticsService(statisticsRepository)
 	statisticsTransportHTTP := statistics_transport_http.NewStatisticsHTTPHandler(statisticsService)
 
+	logger.Debug("initializing feature", zap.String("feature", "web"))
+	webRepository := web_fs_repository.NewWebRepository()
+	webService := web_service.NewWebService(webRepository)
+	webTransportHTTP := web_transport_http.NewWebHTTPHandler(webService)
+
 	logger.Debug("initializing HTTP server")
 
+	httpConfig := core_http_server.NewConfigMust()
 	httpServer := core_http_server.NewHTTPServer(
-		core_http_server.NewConfigMust(),
+		httpConfig,
 		logger,
+		core_http_middleware.CORS(httpConfig.AllowedOrigins),
 		core_http_middleware.RequestID(),
 		core_http_middleware.Logger(logger),
 		core_http_middleware.Panic(),
@@ -84,9 +100,11 @@ func main() {
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(tasksTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(statisticsTransportHTTP.Routes()...)
+	//apiVersionRouter.RegisterRoutes(webTransportHTTP.Routes()...)
 
 	httpServer.RegisterApiRouters(apiVersionRouter)
-
+	httpServer.RegisterRoutes(webTransportHTTP.Routes()...)
+	httpServer.RegisterSwagger()
 	if err := httpServer.Run(ctx); err != nil {
 		logger.Error("HTTP server run error", zap.Error(err))
 	}
